@@ -60,7 +60,7 @@ resource "null_resource" "reboot-when-ignition-changes" {
   }
   # hack: For QEMU we have to use "systemctl poweroff… virsh start" instead of just "systemctl reboot" because the QEMU process does not pick up the new Ignition config otherwise
   provisioner "local-exec" {
-    command = "while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${libvirt_domain.machine[each.key].network_interface.0.addresses.0} sudo touch /boot/flatcar/first_boot ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${libvirt_domain.machine[each.key].network_interface.0.addresses.0} sudo systemctl poweroff; do sleep 1; done && while virsh --connect=qemu:///system shutdown ${var.cluster_name}-${each.key}; do sleep 1; done; virsh --connect=qemu:///system start ${var.cluster_name}-${each.key}"
+    command = "test -f .${each.key}.init && initial_run=no || initial_run=yes; touch .${each.key}.init; if [ $initial_run = yes ]; then exit 0; fi; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 core@${libvirt_domain.machine[each.key].network_interface.0.addresses.0} sudo touch /boot/flatcar/first_boot ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 core@${libvirt_domain.machine[each.key].network_interface.0.addresses.0} sudo systemctl poweroff; do sleep 1; done && while virsh --connect=qemu:///system shutdown ${var.cluster_name}-${each.key}; do sleep 1; done; virsh --connect=qemu:///system start ${var.cluster_name}-${each.key}"
   }
 }
 

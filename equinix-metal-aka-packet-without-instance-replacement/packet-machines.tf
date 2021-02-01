@@ -31,9 +31,9 @@ resource "null_resource" "reboot-when-ignition-changes" {
   }
   # Wait for the new Ignition config object to be ready before rebooting
   depends_on = [aws_s3_bucket_object.object]
-  # Trigger running Ignition on the next reboot and reboot the instance (current limitation: also runs on the first provisioning)
+  # Trigger running Ignition on the next reboot and reboot the instance
   provisioner "local-exec" {
-    command = "while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${packet_device.machine[each.key].access_public_ipv4} sudo touch /boot/flatcar/first_boot ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${packet_device.machine[each.key].access_public_ipv4} sudo systemctl reboot; do sleep 1; done"
+    command = "test -f .${each.key}.init && initial_run=no || initial_run=yes; touch .${each.key}.init; if [ $initial_run = yes ]; then exit 0; fi; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 core@${packet_device.machine[each.key].access_public_ipv4} sudo touch /boot/flatcar/first_boot ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 core@${packet_device.machine[each.key].access_public_ipv4} sudo systemctl reboot; do sleep 1; done"
   }
 }
 
