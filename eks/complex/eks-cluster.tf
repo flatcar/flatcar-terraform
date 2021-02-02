@@ -1,7 +1,7 @@
 # Get the latest Flatcar AMI available for the given channel
 data "aws_ami" "flatcar_latest" {
   most_recent = true
-  owners      = ["075585003325"]
+  owners      = ["aws-marketplace"]
 
   filter {
     name   = "architecture"
@@ -63,6 +63,7 @@ module "eks" {
       ami_id                        = data.aws_ami.flatcar_latest.image_id
       instance_type                 = var.instance_type
       root_volume_size              = 20
+      root_volume_type              = "gp2"
       userdata_template_file        = data.ct_config.node_ignition.rendered
       asg_desired_capacity          = var.worker_group_size
       additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
