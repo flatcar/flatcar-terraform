@@ -23,21 +23,6 @@ data "aws_ami" "flatcar_pro_latest" {
   }
 }
 
-resource "aws_security_group" "worker_group_mgmt" {
-  name_prefix = "worker_group_mgmt"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port = 22
-    to_port   = 22
-    protocol  = "tcp"
-
-    cidr_blocks = [
-      "10.0.0.0/8",
-    ]
-  }
-}
-
 data "aws_availability_zones" "available" {}
 
 module "vpc" {
@@ -67,7 +52,6 @@ module "vpc" {
   }
 }
 
-
 module "eks" {
   source          = "terraform-aws-modules/eks/aws"
   cluster_name    = var.cluster_name
@@ -92,7 +76,6 @@ module "eks" {
       root_volume_size              = 20
       root_volume_type              = "gp2"
       asg_desired_capacity          = var.worker_group_size
-      additional_security_group_ids = [aws_security_group.worker_group_mgmt.id]
 
       # Needed with 2605.12.0, can be dropped in the future
       pre_userdata                  = "mkdir -p /etc/docker"
