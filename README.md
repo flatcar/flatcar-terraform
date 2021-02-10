@@ -15,6 +15,8 @@ Example Terraform modules to provision Flatcar on two public clouds or on VMs on
 
 Follow the README instructions in the directories to try it out:
 
+[`digitalocean`](digitalocean)
+
 [`equinix-metal-aka-packet`](equinix-metal-aka-packet)
 
 [`hetzner`](hetzner)
