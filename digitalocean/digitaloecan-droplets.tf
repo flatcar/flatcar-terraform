@@ -48,7 +48,7 @@ data "ct_config" "machine-ignitions" {
 
 data "template_file" "machine-configs" {
   for_each = toset(var.machines)
-  template = file("${path.module}/machine-${each.key}.yaml.tmpl")
+  template = file("${path.module}/cl/machine-${each.key}.yaml.tmpl")
 
   vars = {
     ssh_keys = jsonencode(var.ssh_keys)
