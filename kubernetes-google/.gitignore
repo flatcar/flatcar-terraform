@@ -1,0 +1,4 @@
+bin/*
+.terraform.lock.hcl
+.terraform/
+*.json

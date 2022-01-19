@@ -1,0 +1,69 @@
+update:
+  group:  "alpha"
+locksmith:
+  reboot_strategy: "reboot"
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - ${ssh_pub_key}
+systemd:
+  units:
+    - name: prepare-cni-plugins.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Unpack CNI plugins to /opt/cni/bin
+        ConditionPathExists=!/opt/cni/bin
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        Restart=on-failure
+        Environment=CNI_VERSION=v0.8.7
+        ExecStartPre=/usr/bin/mkdir --parents /opt/cni/bin
+        ExecStartPre=/usr/bin/tar -v --extract --file "/opt/cni-plugins-linux-amd64-v0.8.7.tgz" --directory /opt/cni/bin --no-same-owner
+        ExecStart=/usr/bin/rm "/opt/cni-plugins-linux-amd64-v0.8.7.tgz"
+        [Install]
+        WantedBy=multi-user.target
+    - name: prepare-critools.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Unpack CRI tools to /opt/bin
+        ConditionPathExists=!/opt/bin/crictl
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        Restart=on-failure
+        Environment=CRICTL_VERSION=v1.22.0
+        ExecStartPre=/usr/bin/mkdir --parents /opt/bin
+        ExecStartPre=/usr/bin/tar -v --extract --file "/opt/crictl-$${CRICTL_VERSION}-linux-amd64.tar.gz" --directory /opt/bin --no-same-owner
+        ExecStart=/usr/bin/rm "/opt/crictl-$${CRICTL_VERSION}-linux-amd64.tar.gz"
+        [Install]
+        WantedBy=multi-user.target
+storage:
+  files:
+    - path: /opt/cni-plugins-linux-amd64-v0.8.7.tgz
+      filesystem: root
+      mode: 0644
+      contents:
+        remote:
+          url: https://github.com/containernetworking/plugins/releases/download/v0.8.7/cni-plugins-linux-amd64-v0.8.7.tgz
+    - path: /opt/crictl-v1.22.0-linux-amd64.tar.gz
+      filesystem: root
+      mode: 0644
+      contents:
+        remote:
+          url: https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.22.0/crictl-v1.22.0-linux-amd64.tar.gz
+    - path: /opt/bin/kubeadm
+      filesystem: root
+      mode: 0755
+      contents:
+        remote:
+          url: https://storage.googleapis.com/kubernetes-release/release/{{kubernetes_version}}/bin/linux/amd64/kubeadm
+    - path: /opt/bin/kubelet
+      filesystem: root
+      mode: 0755
+      contents:
+        remote:
+          url: https://storage.googleapis.com/kubernetes-release/release/{{kubernetes_version}}/bin/linux/amd64/kubelet
