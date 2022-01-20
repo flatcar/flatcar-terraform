@@ -14,6 +14,18 @@ storage:
           set -euo pipefail
           hostname="$(hostname)"
           echo My name is ${name} and the hostname is $${hostname}
+    - path: /reprovision
+      filesystem: oem
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          touch /usr/share/oem/grub.cfg
+          sed -i "/linux_append systemd.machine_id=.*/d" /usr/share/oem/grub.cfg
+          MI=$(cat /etc/machine-id)
+          echo "set linux_append=\"\$linux_append systemd.machine_id=$${MI}\"" >> /usr/share/oem/grub.cfg
+          touch /boot/flatcar/first_boot
   filesystems:
     - name: root
       mount:
@@ -21,3 +33,8 @@ storage:
         format: ext4
         wipe_filesystem: true
         label: ROOT
+    - name: oem
+      mount:
+        device: /dev/disk/by-label/OEM
+        format: btrfs
+        label: OEM
