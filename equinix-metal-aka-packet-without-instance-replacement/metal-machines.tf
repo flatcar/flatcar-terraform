@@ -1,9 +1,9 @@
 terraform {
   required_version = ">= 0.13"
   required_providers {
-    packet = {
-      source  = "packethost/packet"
-      version = "3.1.0"
+    metal = {
+      source = "equinix/metal"
+      version = "3.3.0-alpha.1"
     }
     ct = {
       source  = "poseidon/ct"
@@ -33,11 +33,11 @@ resource "null_resource" "reboot-when-ignition-changes" {
   depends_on = [aws_s3_bucket_object.object]
   # Trigger running Ignition on the next reboot and reboot the instance (current limitation: also runs on the first provisioning)
   provisioner "local-exec" {
-    command = "while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${packet_device.machine[each.key].access_public_ipv4} sudo /usr/share/oem/reprovision ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${packet_device.machine[each.key].access_public_ipv4} sudo systemctl reboot; do sleep 1; done"
+    command = "while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${metal_device.machine[each.key].access_public_ipv4} sudo /usr/share/oem/reprovision ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${metal_device.machine[each.key].access_public_ipv4} sudo systemctl reboot; do sleep 1; done"
   }
 }
 
-resource "packet_device" "machine" {
+resource "metal_device" "machine" {
   for_each         = toset(var.machines)
   hostname         = "${var.cluster_name}-${each.key}"
   plan             = var.plan

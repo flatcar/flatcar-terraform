@@ -1,9 +1,9 @@
 terraform {
   required_version = ">= 0.13"
   required_providers {
-    packet = {
-      source  = "packethost/packet"
-      version = "3.1.0"
+    metal = {
+      source  = "equinix/metal"
+      version = "3.3.0-alpha.1"
     }
     ct = {
       source  = "poseidon/ct"
@@ -16,7 +16,7 @@ terraform {
   }
 }
 
-resource "packet_device" "machine" {
+resource "metal_device" "machine" {
   for_each         = toset(var.machines)
   hostname         = "${var.cluster_name}-${each.key}"
   plan             = var.plan

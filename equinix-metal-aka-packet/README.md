@@ -16,7 +16,7 @@ ssh_keys     = ["ssh-rsa AA... me@mail.net"]
 Now run Terraform (version 13) as follows:
 
 ```
-export PACKET_AUTH_TOKEN=...
+export METAL_AUTH_TOKEN=...
 terraform init
 terraform apply
 ```
