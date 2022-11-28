@@ -27,15 +27,17 @@ See "Customisation" below for advanced settings.
 3. Edit [`server1.yaml`](server-configs/server1.yaml) and provide your own custom provisioning configuration in [container linux config](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/configuration/) syntax.
 4. Plan and apply.
    This will also auto-generate an SSH key pair to log in to the server after provisioning.
-   The public key of that key pair will be registered with Hetzner.
+   The public key of that key pair will be registered with Hetzner. <br />
+   Optionally provide your Hetzner API token (see prerequisites above) in an environment variable.
+   If it is not provided Terraform will prompt for the token on each run.
+   ```shell
+      export HCLOUD_TOKEN="..."
+   ```
+   Invoke Terraform:
    ```shell
    terraform plan
    terraform apply
    ```
-   a. To prevent Terraform from prompting for your Hetzner Cloud API token (see prerequisites above) on each run, optionally provide it in an environment variable:
-      ```shell
-         export HCLOUD_TOKEN="..."
-      ```
 
 Terraform will print server information (name, ipv4 and v6, and ID) after deployment concluded.
 The deployment will create an SSH key pair in `.ssh/`.
