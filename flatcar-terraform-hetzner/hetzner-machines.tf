@@ -48,7 +48,7 @@ resource "hcloud_server" "machine" {
       "set -ex",
       "apt update",
       "apt install -y gawk",
-      "curl -fsSLO --retry-delay 1 --retry 60 --retry-connrefused --retry-max-time 60 --connect-timeout 20 https://raw.githubusercontent.com/kinvolk/init/flatcar-master/bin/flatcar-install",
+      "curl -fsSLO --retry-delay 1 --retry 60 --retry-connrefused --retry-max-time 60 --connect-timeout 20 https://raw.githubusercontent.com/flatcar/init/flatcar-master/bin/flatcar-install",
       "chmod +x flatcar-install",
       "./flatcar-install -s -i /root/ignition.json -C ${var.release_channel}",
       "shutdown -r +1",
