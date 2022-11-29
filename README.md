@@ -19,7 +19,7 @@ Follow the README instructions in the directories to try it out:
 
 [`equinix-metal-aka-packet`](equinix-metal-aka-packet)
 
-[`hetzner`](hetzner)
+[`flatcar-terraform-hetzner`](flatcar-terraform-hetzner)
 
 [`qemu-libvirt`](qemu-libvirt)
 
