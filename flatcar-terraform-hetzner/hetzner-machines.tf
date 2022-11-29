@@ -9,17 +9,17 @@ resource "hcloud_ssh_key" "provisioning_key" {
 }
 
 resource "local_file" "provisioning_key" {
-  filename = "${path.module}/.ssh/provisioning_private_key.pem"
-  content = tls_private_key.provisioning.private_key_pem
+  filename             = "${path.module}/.ssh/provisioning_private_key.pem"
+  content              = tls_private_key.provisioning.private_key_pem
   directory_permission = "0700"
-  file_permission = "0400"
+  file_permission      = "0400"
 }
 
 resource "local_file" "provisioning_key_pub" {
-  filename = "${path.module}/.ssh/provisioning_key.pub"
-  content = tls_private_key.provisioning.public_key_openssh
+  filename             = "${path.module}/.ssh/provisioning_key.pub"
+  content              = tls_private_key.provisioning.public_key_openssh
   directory_permission = "0700"
-  file_permission = "0440"
+  file_permission      = "0440"
 }
 
 
@@ -32,11 +32,11 @@ resource "hcloud_server" "machine" {
   # dummy value for the OS because Flatcar is not available
   image       = "debian-11"
   server_type = var.server_type
-  location = var.location
+  location    = var.location
   connection {
-    host    = self.ipv4_address
+    host        = self.ipv4_address
     private_key = tls_private_key.provisioning.private_key_pem
-    timeout = "1m"
+    timeout     = "1m"
   }
   provisioner "file" {
     content     = data.ct_config.machine-ignitions[each.key].rendered
@@ -57,10 +57,10 @@ resource "hcloud_server" "machine" {
 
   provisioner "remote-exec" {
     connection {
-      host    = self.ipv4_address
+      host        = self.ipv4_address
       private_key = tls_private_key.provisioning.private_key_pem
-      timeout = "3m"
-      user    = "core"
+      timeout     = "3m"
+      user        = "core"
     }
 
     inline = [
@@ -71,7 +71,7 @@ resource "hcloud_server" "machine" {
 
 data "ct_config" "machine-ignitions" {
   for_each = toset(var.machines)
-  strict = true
+  strict   = true
   content  = file("${path.module}/server-configs/${each.key}.yaml")
   snippets = [
     data.template_file.core_user.rendered

@@ -1,9 +1,9 @@
 output "provisioning_public_key_file" {
-	value = local_file.provisioning_key_pub.filename
+  value = local_file.provisioning_key_pub.filename
 }
 
 output "provisioning_private_key_file" {
-	value = local_file.provisioning_key.filename
+  value = local_file.provisioning_key.filename
 }
 
 output "ipv4" {
