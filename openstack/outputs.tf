@@ -9,27 +9,20 @@ output "provisioning_private_key_file" {
 output "ipv4" {
   value = {
     for key in var.machines :
-    "${var.cluster_name}-${key}" => hcloud_server.machine[key].ipv4_address
+    "${var.cluster_name}-${key}" => openstack_compute_instance_v2.instance[key].access_ip_v4
   }
 }
 
 output "ipv6" {
   value = {
     for key in var.machines :
-    "${var.cluster_name}-${key}" => hcloud_server.machine[key].ipv6_address
-  }
-}
-
-output "id" {
-  value = {
-    for key in var.machines :
-    "${var.cluster_name}-${key}" => hcloud_server.machine[key].id
+    "${var.cluster_name}-${key}" => openstack_compute_instance_v2.instance[key].access_ip_v6
   }
 }
 
 output "name" {
   value = {
     for key in var.machines :
-    "${var.cluster_name}-${key}" => hcloud_server.machine[key].name
+    "${var.cluster_name}-${key}" => openstack_compute_instance_v2.instance[key].name
   }
 }

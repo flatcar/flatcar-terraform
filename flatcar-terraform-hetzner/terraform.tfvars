@@ -4,7 +4,7 @@
 cluster_name = "flatcar"
 
 # Uses server1.yaml.
-machines     = ["server1"]
+machines = ["server1"]
 
 # One of nbg1, fsn1, hel1, or ash
 location = "fsn1"
