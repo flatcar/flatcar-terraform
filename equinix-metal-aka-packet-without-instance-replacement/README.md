@@ -1,6 +1,8 @@
 # Equinix Metal (formerly known as Packet) without instance replacement
 
-This small setup can be used to provision Flatcar nodes on [Equinix Metal](https://metal.equinix.com/) with the instance user data (Ignition config) of the node on AWS S3. It is an experiment to show how to circumvent instance replacement when updating the node user data by replacing just the AWS S3 contents and telling Ignition to rerun on the node. This only works when the Ignition config contains a directive to reformat the root filesystem, so that no old state is kept. The advantage is to be able to keep persistent data on another partition, keep the same IP address, and to reduce the time of re-applying a configuration change. Drawbacks are changing SSH host keys and a changing `/etc/machine-id` value, and due to a current limitation an additional reboot when provisioning the first time.
+This small setup can be used to provision Flatcar nodes on [Equinix Metal](https://metal.equinix.com/) with the instance user data (Ignition config) used for reconfiguration. The advantage is to be able to keep persistent data, keep the same IP address, and to reduce the time of re-applying a configuration change.
+
+This setup uses `flatcar-reset` to clean the rootfs while preserving allowed paths, but you can also use the [reinstall](https://registry.terraform.io/providers/equinix/equinix/latest/docs/resources/equinix_metal_device#reinstall) option and drop `reprovision-helper` at the expense of losing all rootfs data.
 
 Edit the [Container Linux Config](https://kinvolk.io/docs/flatcar-container-linux/latest/container-linux-config-transpiler/configuration/) `cl/machine-mynode.yaml.tmpl` file if you like, then create the following `terraform.tfvars` with a machine `mynode`, corresponding to the Container Linux Config file name. If you add more machines, create new files for them under `cl/`.
 
@@ -13,21 +15,22 @@ project_id   = "1...-2...-3...-4...-5..."
 ssh_keys     = ["ssh-rsa AA... me@mail.net"]
 ```
 
+It is recommended to register your SSH key in the Equinix Metal Project to use the out-of-band console. Since Flatcar will fetch this key, too, you can remove it from the YAML config.
+
 Now run Terraform (version 13) as follows:
 
 ```
 export METAL_AUTH_TOKEN=...
-export AWS_DEFAULT_REGION=...
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
 terraform init
 terraform apply
 ```
 
-Log in via `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@IPADDRESS`.
+Log in via `ssh core@IPADDRESS` (maybe add `-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0`).
 
-Make a change to `cl/machine-mynode.yaml.tmpl` and run `terraform apply` again, seeing how the node is just rebooted and the new config applied.
+When you make a change to `machine-mynode.yaml.tmpl` (e.g., `my-setting v1` to `my-setting v2` and run `terraform apply` again, the instance is just rebooted instead of recreated and the new Ignition config applied while keeping wanted data (see `KEEPPATHS` setting) and discarding the rest.
 
-WARNING: Do not put secrets into `cl/machine-mynode.yaml.tmpl` because for this proof-of-concept the AWS S3 bucket is publicly accessible.
+We can run this command to compare the values of `/etc/config-side-effect` and `/mydata/data` before and after the run. We should see that `/etc/config-side-effect` changes while `/mydata/data` stays the same.
 
-It is recommended to register your SSH key in the Equinix Metal Project to use the out-of-band console. Since Flatcar will fetch this key, too, you can remove it from the YAML config.
+```
+ssh core@IPADDRESS "head /etc/config-side-effect /mydata/data"
+```

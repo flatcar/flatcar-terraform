@@ -1,0 +1,56 @@
+#!/bin/sh
+# This script will be executed in-line (like sourcing, hence first line is ignored and it may not be bash)
+# It can also be used used stand-alone for testing if these env vars are declared:
+# MODE, NAME, RGROUP, PUBLICIP, PORT, EXPECTED, KEEPPATHS
+# Note that the script must not use the $VAR format for the above because Terraform only replaces in curly brackets
+# and on the other hand, $VAR should be used for all other variables
+set -eu
+
+echo "Preparing rg ${RGROUP} vm ${NAME} to keep ${KEEPPATHS}"
+
+run() {
+  cmd="$1"
+  if [ "${MODE}" = "ssh" ]; then
+    echo "Using SSH via ${PUBLICIP}:${PORT}"
+    while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 -p "${PORT}" "core@${PUBLICIP}" "set -euo pipefail; $cmd"; do
+      sleep 1
+    done
+  else
+    # Workaround for az vm run-command invoke: Use END to signal execution without errors
+    RUN=$(az vm run-command invoke -g "${RGROUP}" -n "${NAME}" --command-id RunShellScript --scripts "set -euo pipefail; $cmd ; echo END")
+    if ! echo "$RUN" | grep -q END; then
+      exit 1
+    fi
+  fi
+}
+
+# Azure workaround to prevent a race with serving outdated userData (despite using depends_on = [azurerm_linux_virtual_machine.machine]),
+# making use of the fact that Terraform also runs this action directly after the fresh provisioning
+EXPECTEDSUM=$(echo "${EXPECTED}" | base64 -d | sha512sum)
+# Terraform workaround: Terraform also runs this script directly after the first provisioning, not only on changes,
+# we need to detect this on the instance to prevent an unnecessary reboot on first boot by managing /.reprovision-marker
+run "
+SUM=\$(curl -sSfL -H 'Metadata: true' 'http://169.254.169.254/metadata/instance/compute/userData?api-version=2021-01-01&format=text' | base64 -d | sha512sum)
+if test -e /.reprovision-marker ; then
+  while [ \"\$SUM\" != \"$EXPECTEDSUM\" ]; do
+    sleep 1
+    echo 'Waiting for metadata server to catch up'
+    SUM=\$(curl -sSfL -H 'Metadata: true' 'http://169.254.169.254/metadata/instance/compute/userData?api-version=2021-01-01&format=text' | base64 -d | sha512sum)
+  done
+  sudo flatcar-reset --keep-machine-id --keep-path '/.reprovision-marker' ${KEEPPATHS}
+  if [ \"${MODE}\" = \"ssh\" ]; then echo 'Rebooting now'; sudo systemctl reboot; else echo REBOOT; fi
+else
+  sudo touch /.reprovision-marker
+  echo 'First run, ignored'
+fi"
+
+if [ "${MODE}" != "ssh" ] && echo "$RUN" | grep -q REBOOT; then
+  echo "Ran flatcar-reset, will reboot"
+  az vm restart -g "${RGROUP}" -n "${NAME}"
+  echo "Reboot issued"
+fi
+
+# The reboot could also be done with the Kubernetes kured reboot manager by doing "sudo touch /run/reboot-required".
+# The running of flatcar-reset could also be done through a daemon that checks the metadata service for changes
+# with the main difference that changing the data retention setting would have to be part of Ignition itself and changes
+# for it won't apply for the issued reprovisioning but only future reprovisionings.

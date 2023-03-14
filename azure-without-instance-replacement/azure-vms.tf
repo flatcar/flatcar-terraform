@@ -7,7 +7,7 @@ terraform {
     }
     ct = {
       source  = "poseidon/ct"
-      version = "0.7.1"
+      version = "0.11.0"
     }
     template = {
       source  = "hashicorp/template"
@@ -68,58 +68,32 @@ resource "azurerm_network_interface" "main" {
 resource "null_resource" "reboot-when-ignition-changes" {
   for_each = toset(var.machines)
   triggers = {
-    ignition_config = data.ct_config.machine-ignitions[each.key].rendered
+    ignition_config    = azurerm_linux_virtual_machine.machine[each.key].user_data
+    reprovision_helper = data.template_file.reprovision[each.key].rendered
   }
   # Wait for the new Ignition config object to be ready before rebooting
-  depends_on = [azurerm_storage_blob.object]
-  # Trigger running Ignition on the next reboot and reboot the instance (current limitation: also runs on the first provisioning)
+  depends_on = [azurerm_linux_virtual_machine.machine]
+  # Trigger running Ignition on the next reboot and reboot the instance
   provisioner "local-exec" {
-    command = "while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${azurerm_linux_virtual_machine.machine[each.key].public_ip_address} \"sudo /usr/share/oem/reprovision '${azurerm_storage_blob.object[each.key].url}${data.azurerm_storage_account_blob_container_sas.ignition.sas}'\" ; do sleep 1; done; while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@${azurerm_linux_virtual_machine.machine[each.key].public_ip_address} sudo systemctl reboot; do sleep 1; done"
+    command = data.template_file.reprovision[each.key].rendered
   }
 }
 
-resource "azurerm_storage_account" "ignition" {
-  name                     = replace(lower(var.cluster_name), "/[^[:alnum:]]/", "")
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-}
+data "template_file" "reprovision" {
+  for_each = toset(var.machines)
+  template = file("${path.module}/reprovision-helper")
 
-resource "azurerm_storage_container" "user-data-forcenew-workaround" {
-  name                  = "user-data-forcenew-workaround-${var.cluster_name}"
-  storage_account_name  = azurerm_storage_account.ignition.name
-  container_access_type = "private"
-}
-
-data "azurerm_storage_account_blob_container_sas" "ignition" {
-  connection_string = azurerm_storage_account.ignition.primary_connection_string
-  container_name    = azurerm_storage_container.user-data-forcenew-workaround.name
-  https_only        = true
-
-  start  = "2021-01-01"
-  expiry = "2099-01-01"
-
-  permissions {
-    read   = true
-    add    = false
-    create = false
-    write  = false
-    delete = false
-    list   = false
+  vars = {
+    # Space separated list of regexes for data to keep when reconfiguring the instance with Ignition (quote with ' only, using " is not allowed)
+    KEEPPATHS = "'/etc/ssh/ssh_host_.*' /mydata /var/log"
+    RGROUP    = azurerm_resource_group.main.name
+    NAME      = azurerm_linux_virtual_machine.machine[each.key].name
+    PUBLICIP  = azurerm_linux_virtual_machine.machine[each.key].public_ip_address
+    MODE      = var.mode
+    PORT      = var.ssh_port
+    # Workaround because Azure still servers the outdated config for some time
+    EXPECTED  = azurerm_linux_virtual_machine.machine[each.key].user_data
   }
-
-  content_type = "application/json"
-}
-
-# Ignition config, privately accessible
-resource "azurerm_storage_blob" "object" {
-  for_each               = toset(var.machines)
-  name                   = "${var.cluster_name}-${each.key}"
-  storage_account_name   = azurerm_storage_account.ignition.name
-  storage_container_name = azurerm_storage_container.user-data-forcenew-workaround.name
-  type                   = "Block"
-  source_content         = data.ct_config.machine-ignitions[each.key].rendered
 }
 
 resource "azurerm_linux_virtual_machine" "machine" {
@@ -130,12 +104,8 @@ resource "azurerm_linux_virtual_machine" "machine" {
   size                = var.server_type
   admin_username      = "core"
 
-  lifecycle {
-    ignore_changes = [custom_data]
-  }
-
-  # Workaround: Indirection through blob storage because "lifecycle { ignore_changes = [user_data] }" is not flexible enough to keep the instance while still updating the user data
-  custom_data         = base64encode("{ \"ignition\": { \"version\": \"2.1.0\", \"config\": { \"replace\": { \"source\": \"${azurerm_storage_blob.object[each.key].url}${data.azurerm_storage_account_blob_container_sas.ignition.sas}\" } } } }")
+  # With user_data in-place updates are supported, for custom_data we would need a workaround to have the Ignition config point to a blob URL (config: replace: source: ...) for the real config
+  user_data = base64encode(data.ct_config.machine-ignitions[each.key].rendered)
   network_interface_ids = [
     azurerm_network_interface.main[each.key].id,
   ]
@@ -148,12 +118,12 @@ resource "azurerm_linux_virtual_machine" "machine" {
   source_image_reference {
     publisher = "kinvolk"
     offer     = "flatcar-container-linux"
-    sku       = "stable"
-    version   = var.flatcar_stable_version
+    sku       = "alpha"
+    version   = var.flatcar_alpha_version
   }
 
   plan {
-    name      = "stable"
+    name      = "alpha"
     product   = "flatcar-container-linux"
     publisher = "kinvolk"
   }
@@ -167,6 +137,7 @@ resource "azurerm_linux_virtual_machine" "machine" {
 data "ct_config" "machine-ignitions" {
   for_each = toset(var.machines)
   content  = data.template_file.machine-configs[each.key].rendered
+  strict   = true
 }
 
 data "template_file" "machine-configs" {
@@ -176,5 +147,6 @@ data "template_file" "machine-configs" {
   vars = {
     ssh_keys = jsonencode(var.ssh_keys)
     name     = each.key
+    port     = var.ssh_port
   }
 }
