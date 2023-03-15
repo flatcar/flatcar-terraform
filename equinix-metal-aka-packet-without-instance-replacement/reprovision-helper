@@ -1,0 +1,35 @@
+#!/bin/sh
+# This script will be executed in-line (like sourcing, hence first line is ignored and it may not be bash)
+# It can also be used used stand-alone for testing if these env vars are declared:
+# NAME, PUBLICIP, KEEPPATHS
+# Note that the script must not use the $VAR format for the above because Terraform only replaces in curly brackets
+# and on the other hand, $VAR should be used for all other variables
+set -eu
+
+run() {
+  cmd="$1"
+  while ! ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o NumberOfPasswordPrompts=0 "core@${PUBLICIP}" "set -euo pipefail; $cmd"; do
+    sleep 1
+  done
+}
+
+
+# Equinix Metal workaround: First make sure that we run the latest Flatcar Alpha:
+run "if grep -q 3227.0.0 /etc/os-release; then sudo flatcar-update -V 3535.0.0 ; sudo systemctl reboot ; exit 1; fi"
+
+echo "Preparing device ${NAME} ${PUBLICIP} to keep ${KEEPPATHS}"
+
+# Terraform workaround: Terraform also runs this script directly after the first provisioning, not only on changes, we need to detect this through a /.reprovision-marker file on the instance to prevent an unnecessary reboot on first boot
+
+run "if test -e /.reprovision-marker; then
+  sudo flatcar-reset --keep-machine-id --keep-path '/.reprovision-marker' ${KEEPPATHS}
+  sudo systemctl reboot
+else
+  sudo touch /.reprovision-marker
+  echo 'First run, ignored'
+fi"
+
+# The reboot could also be done with the Kubernetes kured reboot manager by doing "sudo touch /run/reboot-required".
+# The running of flatcar-reset could also be done through a daemon that checks the metadata service for changes
+# with the main difference that changing the data retention setting would have to be part of Ignition itself and changes
+# for it won't apply for the issued reprovisioning but only future reprovisionings.

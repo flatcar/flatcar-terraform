@@ -1,40 +1,36 @@
----
+variant: flatcar
+version: 1.0.0
+
+storage:
+  files:
+    - path: /opt/bin/test-service.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          if test ! -e /etc/config-side-effect; then
+            echo "my-setting v1" > /etc/config-side-effect
+          fi
+          mkdir -p /mydata
+          if test ! -e /mydata/data; then
+            echo "$RANDOM" > /mydata/data
+          fi
+systemd:
+  units:
+    - name: test.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Test service with side-effect
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        Restart=on-failure
+        ExecStart=/opt/bin/test-service.sh
+        [Install]
+        WantedBy=multi-user.target
 passwd:
   users:
     - name: core
       ssh_authorized_keys: ${ssh_keys}
-storage:
-  files:
-    - path: /home/core/works
-      filesystem: root
-      mode: 0755
-      contents:
-        inline: |
-          #!/bin/bash
-          set -euo pipefail
-          hostname="$(hostname)"
-          echo My name is ${name} and the hostname is $${hostname}
-    - path: /reprovision
-      filesystem: oem
-      mode: 0755
-      contents:
-        inline: |
-          #!/bin/bash
-          set -euo pipefail
-          touch /usr/share/oem/grub.cfg
-          sed -i "/linux_append systemd.machine_id=.*/d" /usr/share/oem/grub.cfg
-          MI=$(cat /etc/machine-id)
-          echo "set linux_append=\"\$linux_append systemd.machine_id=$${MI}\"" >> /usr/share/oem/grub.cfg
-          touch /boot/flatcar/first_boot
-  filesystems:
-    - name: root
-      mount:
-        device: /dev/disk/by-label/ROOT
-        format: ext4
-        wipe_filesystem: true
-        label: ROOT
-    - name: oem
-      mount:
-        device: /dev/disk/by-label/OEM
-        format: btrfs
-        label: OEM
