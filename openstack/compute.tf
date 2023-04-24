@@ -46,6 +46,8 @@ resource "openstack_compute_instance_v2" "instance" {
   }
 
   user_data = data.ct_config.machine-ignitions[each.key].rendered
+
+  security_groups = flatten([["default"], var.ssh ? [openstack_networking_secgroup_v2.ssh[0].name] : []])
 }
 
 data "ct_config" "machine-ignitions" {
