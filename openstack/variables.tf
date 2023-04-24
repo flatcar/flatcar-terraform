@@ -64,3 +64,9 @@ variable "region" {
   description = "OpenStack region"
   default     = "RegionOne"
 }
+
+variable "ssh" {
+  type        = bool
+  description = "Allow SSH connection from the outside"
+  default     = false
+}

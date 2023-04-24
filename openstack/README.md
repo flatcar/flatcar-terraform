@@ -67,6 +67,7 @@ The provisioning automation can be customised via settings in [`terraform.tfvars
     Read more about channels [here](https://www.flatcar.org/releases).
   - `flatcar_version`: Select the desired Flatcar version for the given channel (default to "current", which is the latest).
   - `flavor_name`: The spec of the machine, it default to ds1G (1vCPU, 10GB of disk and 1GB of memory)
+  - `ssh`: A boolean to create and attach a security group to the instances to allow SSH connections. (_NOTE_: At this moment, when creating an instance with this variable enabled then turning it off does not work as the security group is not firstly detached from the instance so the security group can't be deleted)
 
 [afterburn]: https://coreos.github.io/afterburn/
 [container-linux-config]: https://www.flatcar.org/docs/latest/provisioning/config-transpiler/configuration/
