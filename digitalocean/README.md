@@ -15,7 +15,7 @@ flatcar_stable_version = "x.y.z"
 You can resolve the latest Flatcar Stable version with this shell command:
 
 ```
-curl -sSfL https://stable.release.flatcar-linux.net/amd64-usr/current/version.txt | grep -m 1 FLATCAR_VERSION_ID= | cut -d = -f 2
+(source <(curl -sSfL https://stable.release.flatcar-linux.net/amd64-usr/current/version.txt); echo "${FLATCAR_VERSION_ID}")
 ```
 
 The machine name listed in the `machines` variable is used to retrieve the corresponding [Container Linux Config](https://kinvolk.io/docs/flatcar-container-linux/latest/container-linux-config-transpiler/configuration/). For each machine in the list, you should have a `machine-NAME.yaml.tmpl` file with a corresponding name. An example file `machine-mynode.yaml.tmpl` for `mynode` is already provided.
