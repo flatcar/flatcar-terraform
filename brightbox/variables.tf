@@ -11,7 +11,7 @@ variable "release_channel" {
 
   validation {
     condition     = contains(["lts", "stable", "beta", "alpha"], var.release_channel)
-    error_message = "release_channel must be lts, stable, beta, or alpha."
+    error_message = "The variable 'release_channel' must be lts, stable, beta, or alpha."
   }
 }
 
