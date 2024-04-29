@@ -28,6 +28,7 @@ data "ct_config" "config-control-plane" {
   strict = true
   content = templatefile("${path.module}/server-configs/control-plane.yaml.tmpl", {
     kubernetes_version = var.kubernetes_version
+    kubernetes_minor   = join(".", [split(".", var.kubernetes_version)[0], split(".", var.kubernetes_version)[1]])
   })
   snippets = [
     data.template_file.core_user.rendered
@@ -38,6 +39,7 @@ data "ct_config" "config-worker" {
   strict = true
   content = templatefile("${path.module}/server-configs/worker.yaml.tmpl", {
     kubernetes_version = var.kubernetes_version
+    kubernetes_minor   = join(".", [split(".", var.kubernetes_version)[0], split(".", var.kubernetes_version)[1]])
     control_plane_ip   = brightbox_cloudip.control-plane.public_ipv4
   })
 }
