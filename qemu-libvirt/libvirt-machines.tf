@@ -63,6 +63,7 @@ resource "libvirt_domain" "machine" {
   }
 
   graphics {
+    type        = var.graphics_type
     listen_type = "address"
   }
 
