@@ -29,3 +29,9 @@ variable "virtual_cpus" {
   default     = 1
   description = "Number of virtual CPUs"
 }
+
+variable "graphics_type" {
+  type        = string
+  default     = "spice"
+  description = "Graphics type to use (spice or vnc)"
+}
