@@ -1,0 +1,48 @@
+---
+version: 1.1.0
+variant: flatcar
+storage:
+  links:
+    - target: /opt/extensions/kubernetes/kubernetes-${kubernetes_version}-x86-64.raw
+      path: /etc/extensions/kubernetes.raw
+      hard: false
+  files:
+    - path: /etc/sysupdate.kubernetes.d/kubernetes.conf
+      contents:
+        source: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${kubernetes_minor_version}.conf
+    - path: /etc/sysupdate.d/noop.conf
+      contents:
+        source: https://extensions.flatcar.org/extensions/noop.conf
+    - path: /opt/extensions/kubernetes/kubernetes-${kubernetes_version}-x86-64.raw
+      contents:
+        source: https://extensions.flatcar.org/extensions/kubernetes-${kubernetes_version}-x86-64.raw
+systemd:
+  units:
+    - name: systemd-sysupdate.timer
+      enabled: true
+    - name: systemd-sysupdate.service
+      dropins:
+        - name: kubernetes.conf
+          contents: |
+            [Service]
+            ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
+            ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
+            ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
+            ExecStartPost=/usr/bin/sh -c "[[ $(cat /tmp/kubernetes) != $(cat /tmp/kubernetes-new) ]] && touch /run/reboot-required"
+    - name: kubeadm.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Kubeadm service
+        Requires=containerd.service coreos-metadata.service
+        After=containerd.service coreos-metadata.service
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
+        [Service]
+        EnvironmentFile=/run/metadata/flatcar
+        Restart=on-failure
+        StartLimitInterval=0
+        RestartSec=10
+        ExecStartPre=/usr/bin/curl -fsSL http://${control_plane_ip}:8080/admin.conf -o /tmp/admin.conf
+        ExecStart=/usr/bin/kubeadm join --discovery-file /tmp/admin.conf --node-name "$${COREOS_AKAMAI_INSTANCE_LABEL}"
+        [Install]
+        WantedBy=multi-user.target
