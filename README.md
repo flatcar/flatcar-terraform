@@ -26,6 +26,8 @@
 ## flatcar-terraform
 Examples of deploying Flatcar instances with Terraform
 
+:warning: This is really for demo purposes but it can serve as a foundation (for example do not pass the admin configuration through HTTP for workers to join) :warning:
+
 ## AWS EKS worker nodes
 
 Example Terraform setup for an EKS cluster with workers that run Flatcar Container Linux.
