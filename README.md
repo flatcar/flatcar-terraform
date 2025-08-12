@@ -81,4 +81,4 @@ Follow the README instructions in the directories to try it out:
 Experimental setup for Equinix Metal to re-run Ignition and avoid instance replacement on user data changes. Useful for persistent data and IP retention.
 
 ### [qemu-libvirt-without-instance-replacement](qemu-libvirt-without-instance-replacement)
-Experimental setup for QEMU/libvirt to re-run Ignition without replacing the VM instance. Useful for local persistent development environments.
+Experimental setup for QEMU/libvirt to re-run Ignition without replacing the VM instance. Useful for local persistent development environments. 
