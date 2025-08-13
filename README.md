@@ -7,43 +7,78 @@
 [![Mastodon Follow](https://img.shields.io/badge/Mastodon-Follow-6364FF?logo=mastodon)](https://hachyderm.io/@flatcar)
 [![Bluesky](https://img.shields.io/badge/Bluesky-Follow-0285FF?logo=bluesky)](https://bsky.app/profile/flatcar.org)
 
-</div>
+</div> 
 
-# flatcar-terraform
+# Table of Contents
+
+- [flatcar-terraform](#flatcar-terraform)
+  - [AWS EKS worker nodes](#aws-eks-worker-nodes)
+  - [Plain Flatcar instances](#plain-flatcar-instances)
+    - [digitalocean](#digitalocean)
+    - [equinix-metal-aka-packet](#equinix-metal-aka-packet)
+    - [flatcar-terraform-hetzner](#flatcar-terraform-hetzner)
+    - [qemu-libvirt](#qemu-libvirt)
+    - [openstack](#openstack)
+  - [Experiments for re-running Ignition instead of instance replacement on userdata changes](#experiments-for-re-running-ignition-instead-of-instance-replacement-on-userdata-changes)
+    - [equinix-metal-aka-packet-without-instance-replacement](#equinix-metal-aka-packet-without-instance-replacement)
+    - [qemu-libvirt-without-instance-replacement](#qemu-libvirt-without-instance-replacement)
+
+## flatcar-terraform
 Examples of deploying Flatcar instances with Terraform
 
-# AWS EKS worker nodes
+:warning: This is really for demo purposes but it can serve as a foundation (for example do not pass the admin configuration through HTTP for workers to join) :warning:
+
+## AWS EKS worker nodes
 
 Example Terraform setup for an EKS cluster with workers that run Flatcar Container Linux.
 
 Follow the README instructions in the directory:
 
-[`eks`](eks)
+### [eks](eks)
+Terraform configuration for deploying an AWS EKS cluster with Flatcar Container Linux worker nodes. Includes examples for both complex and simple EKS setups, as well as a setup with a bastion host.
 
-# Plain Flatcar instances
+## Plain Flatcar instances
 
 Example Terraform modules to provision Flatcar on two public clouds or on VMs on your laptop.
 
 Follow the README instructions in the directories to try it out:
 
-[`digitalocean`](digitalocean)
+### [digitalocean](digitalocean)
+Provision Flatcar Container Linux droplets on DigitalOcean using Terraform. Includes a sample configuration and user data template.
 
-[`equinix-metal-aka-packet`](equinix-metal-aka-packet)
+### [equinix-metal-aka-packet](equinix-metal-aka-packet)
+Deploy Flatcar Container Linux on Equinix Metal (formerly Packet) servers. Provides templates for machine configuration and user data.
 
-[`flatcar-terraform-hetzner`](flatcar-terraform-hetzner)
+### [flatcar-terraform-hetzner](flatcar-terraform-hetzner)
+Provision Flatcar Container Linux on Hetzner Cloud servers. Includes server configuration templates and example variables.
 
-[`qemu-libvirt`](qemu-libvirt)
+### [qemu-libvirt](qemu-libvirt)
+Run Flatcar Container Linux VMs locally using QEMU and libvirt. Useful for local development and testing.
 
-[`openstack`](openstack)
+### [openstack](openstack)
+Deploy Flatcar Container Linux on OpenStack infrastructure. Includes compute, network, and user data templates for OpenStack environments.
 
 ## Experiments for re-running Ignition instead of instance replacement on userdata changes
 
-This is an experiment to show how to circumvent instance replacement when updating the node user data by telling Ignition to rerun on the node. This only works when the Ignition config contains a directive to reformat the root filesystem, so that no old state is kept. The advantage is to be able to keep persistent data on another partition, keep the same IP address, and to reduce the time of re-applying a configuration change.
-Drawbacks are changing SSH host keys and a changing `/etc/machine-id` value (not for libvirt, though), and due to a current limitation an additional reboot when provisioning the first time.
-A couple of workarounds are needed due to the restrictions of in-place updating the user data.
+This section demonstrates how to avoid instance replacement when updating node user data by instructing Ignition to rerun on the node. This approach only works when the Ignition config includes a directive to reformat the root filesystem, ensuring no old state is retained.
+
+**Advantages:**
+- Ability to keep persistent data on another partition
+- Retain the same IP address
+- Reduce the time required to re-apply configuration changes
+
+**Drawbacks:**
+- SSH host keys will change
+- `/etc/machine-id` value will change (except for libvirt)
+- An additional reboot is required during the initial provisioning due to a current limitation
+
+**Note:**
+- Several workarounds are necessary due to the restrictions of in-place updating of user data.
 
 Follow the README instructions in the directories to try it out:
 
-[`equinix-metal-aka-packet-without-instance-replacement`](equinix-metal-aka-packet-without-instance-replacement)
+### [equinix-metal-aka-packet-without-instance-replacement](equinix-metal-aka-packet-without-instance-replacement)
+Experimental setup for Equinix Metal to re-run Ignition and avoid instance replacement on user data changes. Useful for persistent data and IP retention.
 
-[`qemu-libvirt-without-instance-replacement`](qemu-libvirt-without-instance-replacement)
+### [qemu-libvirt-without-instance-replacement](qemu-libvirt-without-instance-replacement)
+Experimental setup for QEMU/libvirt to re-run Ignition without replacing the VM instance. Useful for local persistent development environments. 
