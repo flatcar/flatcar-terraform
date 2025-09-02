@@ -1,0 +1,66 @@
+---
+version: 1.1.0
+variant: flatcar
+storage:
+  links:
+    - target: /opt/extensions/kubernetes/kubernetes-${kubernetes_version}-x86-64.raw
+      path: /etc/extensions/kubernetes.raw
+      hard: false
+  files:
+    - path: /etc/sysupdate.kubernetes.d/kubernetes.conf
+      contents:
+        source: https://extensions.flatcar.org/extensions/kubernetes/kubernetes-${kubernetes_minor_version}.conf
+    - path: /etc/sysupdate.d/noop.conf
+      contents:
+        source: https://extensions.flatcar.org/extensions/noop.conf
+    - path: /opt/extensions/kubernetes/kubernetes-${kubernetes_version}-x86-64.raw
+      contents:
+        source: https://extensions.flatcar.org/extensions/kubernetes-${kubernetes_version}-x86-64.raw
+systemd:
+  units:
+    - name: systemd-sysupdate.timer
+      enabled: true
+    - name: systemd-sysupdate.service
+      dropins:
+        - name: kubernetes.conf
+          contents: |
+            [Service]
+            ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes"
+            ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
+            ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
+            ExecStartPost=/usr/bin/sh -c "[[ $(cat /tmp/kubernetes) != $(cat /tmp/kubernetes-new) ]] && touch /run/reboot-required"
+    - name: kubeadm.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Kubeadm service
+        Requires=containerd.service
+        After=containerd.service coreos-metadata.service
+        Requires=coreos-metadata.service
+        ConditionPathExists=!/etc/kubernetes/kubelet.conf
+        [Service]
+        EnvironmentFile=/run/metadata/flatcar
+        ExecStartPre=/usr/bin/kubeadm init --node-name "$${COREOS_AKAMAI_INSTANCE_LABEL}"
+        ExecStartPre=/usr/bin/mkdir -p /home/core/.kube /var/www
+        ExecStartPre=/usr/bin/cp /etc/kubernetes/admin.conf /home/core/.kube/config
+        ExecStartPre=/usr/bin/cp /etc/kubernetes/admin.conf /var/www
+        ExecStartPre=/usr/bin/chmod a+r /var/www/admin.conf
+        ExecStart=/usr/bin/chown -R core:core /home/core/.kube
+        [Install]
+        WantedBy=multi-user.target
+    - name: nginx.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=NGINX
+        After=docker.service
+        Requires=docker.service
+        [Service]
+        TimeoutStartSec=0
+        ExecStartPre=-/usr/bin/docker rm --force nginx1
+        ExecStart=/usr/bin/docker run --name nginx1 -p 8080:80 --volume "/var/www:/usr/share/nginx/html:ro" --pull always --log-driver=journald docker.io/nginx:1
+        ExecStop=/usr/bin/docker stop nginx1
+        Restart=always
+        RestartSec=5s
+        [Install]
+        WantedBy=multi-user.target
