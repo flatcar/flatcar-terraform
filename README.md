@@ -47,3 +47,22 @@ Follow the README instructions in the directories to try it out:
 [`equinix-metal-aka-packet-without-instance-replacement`](equinix-metal-aka-packet-without-instance-replacement)
 
 [`qemu-libvirt-without-instance-replacement`](qemu-libvirt-without-instance-replacement)
+
+## 🔐 AWS Security Group Best Practices
+
+When deploying Flatcar instances on AWS with Terraform, it is important to configure Security Groups securely. Below are recommended practices:
+
+- **Restrict SSH Access**  
+  Do not allow SSH (`port 22`) from `0.0.0.0/0`.  
+  Instead, limit access to trusted IPs only (e.g., your office or VPN IP).
+
+- **Use Variables for IP Management**  
+  Define allowed CIDR blocks (such as your workstation IP) in `variables.tf`.  
+  This avoids hardcoding sensitive values and makes updates easier.  
+  ```hcl
+  variable "ssh_allowed_cidr" {
+    description = "CIDR block allowed to SSH into instances"
+    type        = string
+    default     = "203.0.113.25/32"
+  }
+
