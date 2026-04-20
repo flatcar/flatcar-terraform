@@ -1,0 +1,10 @@
+{
+   "uuid": "${ uuidv5("dns", vm_name) }",
+   "availability_zone": "nova",
+   "hostname": "${ vm_name }",
+   "launch_index": 0,
+   "meta": {},
+   "project_id": "${ uuidv5("dns", "proxmox") }",
+   "name": "${ vm_name }"
+}
+
