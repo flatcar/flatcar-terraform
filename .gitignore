@@ -2,3 +2,6 @@ terraform.tfvars
 terraform.tfstate*
 .terraform*
 .ssh*
+*.env
+kubeconfig.yaml
+!example.env
