@@ -1,0 +1,17 @@
+variant: flatcar
+version: 1.0.0
+
+storage:
+  files:
+    - path: /etc/flatcar/enabled-sysext.conf
+      contents:
+        inline: |
+          nvidia-drivers-570-open
+    - path: /opt/extensions/nvidia-runtime/nvidia-runtime-v1.17.9-x86-64.raw
+      mode: 0644
+      contents:
+        source: https://extensions.flatcar.org/extensions/nvidia-runtime-v1.17.9-x86-64.raw
+  links:
+    - target: /opt/extensions/nvidia-runtime/nvidia-runtime-v1.17.9-x86-64.raw
+      path: /etc/extensions/nvidia-runtime.raw
+      hard: false
