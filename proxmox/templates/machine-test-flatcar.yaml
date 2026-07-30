@@ -1,0 +1,24 @@
+variant: flatcar
+version: 1.1.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+      %{ for key in ssh_keys }
+      - ${key}
+      %{ endfor }
+systemd:
+  units:
+    - name: flatcar-openstack-hostname.service
+      mask: true
+storage:
+  files:
+    - path: /etc/systemd/network/00-eth0.network
+      contents:
+        inline: |
+          [Match]
+          Name=eth0
+          [Network]
+          Address=192.0.2.10/24
+          Gateway=192.0.2.1/24
+          DNS=1.1.1.1
