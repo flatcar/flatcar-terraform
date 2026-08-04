@@ -1,38 +1,70 @@
-# Local QEMU VM cluster with libvirt
+# Local QEMU/KVM VM with libvirt and Terraform
 
-This small setup can be used to provision Flatcar nodes on your Linux laptop with the [libvirt provider](https://github.com/dmacvicar/terraform-provider-libvirt/).
-A new disk volume pool will be created in `/var/tmp` as precaution to not modify the base image by accident.
+This example provisions a single Flatcar Linux VM on a local Linux host using the
+[libvirt Terraform provider](https://github.com/dmacvicar/terraform-provider-libvirt/)
+and the [poseidon/ct provider](https://github.com/poseidon/terraform-provider-ct)
+for Ignition config rendering.
 
-First, prepare the base image and make sure you don't boot it via the [flatcar_production_qemu.sh](https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_qemu.sh) script or similar:
-```
-cd ~/Downloads
-wget https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_qemu_image.img.bz2
-bunzip2 flatcar_production_qemu_image.img.bz2
-mv flatcar_production_qemu_image-libvirt-import.img
-# optional, increase the image by 5 GB:
-qemu-img resize flatcar_production_qemu_image-libvirt-import.img +5G
-```
+Everything is contained in a single `main.tf` file — copy it, adjust the variables
+at the top, and run `terraform apply`.
 
-It will only be used once for the import and can be deleted afterwards even when new VMs are added.
+## Prerequisites
 
-Edit the [Container Linux Config](https://kinvolk.io/docs/flatcar-container-linux/latest/container-linux-config-transpiler/configuration/) `cl/machine-mynode.yaml.tmpl` file if you like, then create the following `terraform.tfvars` with a machine `mynode`, corresponding to the Container Linux Config file name. If you add more machines, create new files for them under `cl/`.
+- A Linux host with KVM/QEMU and libvirt installed and running (`libvirtd`)
+- Terraform >= 1.4
+- The `default` libvirt storage pool pointing to `/var/lib/libvirt/images`
+  (or adjust `pool = "default"` in the resource definitions to match your setup)
 
-```
-base_image     = "file:///home/myself/Downloads/flatcar_production_qemu_image-libvirt-import.img"
-cluster_name  = "mycluster"
-machines     = ["mynode"]
-virtual_memory = 768
-ssh_keys     = ["ssh-rsa AA... me@mail.net"]
-```
-
-Now run Terraform (version 13) as follows:
+## Usage
 
 ```
 terraform init
+terraform plan
 terraform apply
 ```
 
-View the VMs in `virt-manager` where you can see the VGA console.
-Log in via `ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@IPADDRESS`.
+The domain is created in the "shut off" state and does not start automatically.
+Start it and attach to the console with:
 
-When you make a change to `cl/machine-mynode.yaml.tmpl` and run `terraform apply` again, the instance and its disk will be replaced.
+```
+virsh start --console flatcar-simple
+```
+
+The base image enables autologin on the console for user `core`.
+You can also log in via SSH once you have the IP address from the console output.
+
+## Variables
+
+All variables have sensible defaults; override them via `-var` flags or a
+`terraform.tfvars` file.
+
+| Variable             | Default           | Description                            |
+|----------------------|-------------------|----------------------------------------|
+| `vm_name`            | `flatcar-simple`  | Name of the VM and its disk volumes    |
+| `channel`            | `stable`          | Flatcar release channel                |
+| `release`            | `4459.2.3`        | Flatcar release version                |
+| `memory_mib`         | `2048`            | RAM in MiB                             |
+| `vcpu`               | `2`               | Number of vCPUs                        |
+| `disk_capacity_bytes`| `21474836480`     | System disk size in bytes (20 GiB)     |
+| `mac`                | `52:54:00:45:00:01` | MAC address for the VM's NIC         |
+
+## Design notes
+
+- **Immutable base image** — the downloaded Flatcar image is stored as a read-only
+  base volume. Each VM's system disk is a qcow2 copy-on-write overlay on top of it,
+  so the base is never modified and can be shared across many VMs.
+
+- **Ignition via fw_cfg** — Ignition is delivered to the guest through QEMU's `fw_cfg`
+  mechanism rather than a separate disk or network source. This requires
+  `features { acpi = true }` on the domain, which is mandatory for q35/OVMF machines.
+
+- **Reliable Ignition re-runs** — the libvirt provider cannot update volumes in-place.
+  A `terraform_data` resource tracks all values that should trigger a fresh first boot
+  (Ignition content, base image, disk size, VM name). When any of those change,
+  the system disk and domain are fully replaced so Ignition always runs on a clean disk.
+
+## Updating the Ignition config
+
+Edit the `ct_config` block in `main.tf`, then run `terraform apply`. Terraform will
+detect the change via `terraform_data.system_volume`, replace the disk and domain,
+and Ignition will run on first boot of the new VM.
